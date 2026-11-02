@@ -28,3 +28,11 @@ Node.js 18+，執行 `npm start`，打開 http://localhost:3000 。
 
 到 GitHub 的 `broadcast-storm-game`，上傳 ZIP 內 `broadcast-storm-live/` 下面的檔案（維持 `server.js`、`package.json` 在 repository 根目錄），覆蓋舊檔並 Commit。原 Render 若設為自動部署，會進行新版部署。重新開啟網站建立新教室，舊教室不會保留。
 
+
+
+## 2026-11 動畫與控制修正版
+- 主持人畫面新增明確的目前狀態（備援線、RSTP、A–C 故障、封包循環）。
+- 修正 SVG 圓點被每秒推播刪除而導致動畫不易看見的問題；每次學生送出廣播觸發約 2 秒的一次性動畫，未防護且有循環事件時改成持續動畫。
+- A–C 故障只將 A–C 的圖線淡化，不影響 A–B；模擬斷線須先啟用備援及 RSTP。
+- 這是簡化教學模型，非完整 IEEE RSTP 協定實作或真實網路封包量測。
+- GitHub 更新方式：解壓縮後用同名檔案覆蓋儲存庫，提交 commit；Render 自動部署成功後重新建立教室。

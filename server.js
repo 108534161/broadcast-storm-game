@@ -9,7 +9,7 @@ const rooms=new Map();
 const contentTypes={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 function roomCode(){let code;do{code=crypto.randomBytes(3).toString('hex').toUpperCase()}while(rooms.has(code));return code}
 function makeRoom(){const room={code:roomCode(),secret:crypto.randomBytes(18).toString('hex'),players:new Map(),listeners:new Set(),loop:false,stp:true,fault:false,active:0,frames:0,broadcasts:0,orbit:0,created:Date.now(),lastSend:0,events:[]};rooms.set(room.code,room);return room}
-function view(room){let status='normal';if(room.loop&&!room.stp&&room.active>=300)status='storm';else if(room.loop&&!room.stp&&room.active>=55)status='warning';return {room:room.code,players:room.players.size,loop:room.loop,stp:room.stp,fault:room.fault,orbit:room.orbit,active:Math.round(room.active),frames:Math.round(room.frames),broadcasts:room.broadcasts,status,events:room.events.slice(-12),uptime:Math.floor((Date.now()-room.created)/1000)}}
+function view(room){let status='normal';if(room.loop&&!room.stp&&room.active>=300)status='storm';else if(room.loop&&!room.stp&&room.active>=55)status='warning';return {room:room.code,players:room.players.size,loop:room.loop,stp:room.stp,fault:room.fault,orbit:room.orbit,active:Math.round(room.active),frames:Math.round(room.frames),broadcasts:room.broadcasts,lastSend:room.lastSend,status,events:room.events.slice(-12),uptime:Math.floor((Date.now()-room.created)/1000)}}
 function send(res,status,json){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(json))}
 function update(room){let data='data: '+JSON.stringify(view(room))+'\n\n';for(let listener of room.listeners){try{listener.write(data)}catch{room.listeners.delete(listener)}}}
 function event(room,type,msg){room.events.push({type,msg,time:Date.now()});if(room.events.length>30)room.events.shift()}
@@ -44,7 +44,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(p==='/api/send'){
    const pl=r.players.get(String(d.id||''));if(!pl)return send(res,401,{error:'請先加入教室'});
    if(Date.now()-pl.lastSend<1200)return send(res,429,{error:'發送太快，請稍候再試'});
-   pl.lastSend=Date.now();r.broadcasts++;
+   pl.lastSend=Date.now();r.lastSend=pl.lastSend;r.broadcasts++;
    // A 接收封包：正常樹狀拓樸示意為有限次轉送；完整且未防護的環形才會持續循環。
    r.frames+=r.loop&&!r.fault?3:2;
    r.active=Math.min(1000,r.active+18);
@@ -55,7 +55,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(d.action==='loop'){r.loop=!!d.value;if(!r.loop)r.fault=false;r.orbit=0;event(r,'control',r.loop?'主持人接上 B–C 備援連線（形成環路）':'主持人移除迴圈連線')}
    else if(d.action==='stp'){r.stp=!!d.value;if(r.stp)r.orbit=0;event(r,'control',r.stp?'RSTP 已啟用（阻擋迴圈）':'RSTP 已停用（可能形成迴圈）')}
    else if(d.action==='fault'){if(!r.loop)return send(res,400,{error:'請先接上備援連線'});r.fault=!!d.value;r.orbit=0;event(r,'control',r.fault?'A–C 主線故障；'+(r.stp?'RSTP 收斂後改由 B–C 備援轉送':'尚無循環，但仍缺乏 RSTP 防護'):'A–C 主線恢復') }
-   else if(d.action==='clear'){r.active=0;r.frames=0;r.broadcasts=0;r.orbit=0;r.events=[];event(r,'control','主持人重置封包計數')}
+   else if(d.action==='clear'){r.active=0;r.frames=0;r.broadcasts=0;r.lastSend=0;r.orbit=0;r.events=[];event(r,'control','主持人重置封包計數')}
    else if(d.action==='reset'){r.loop=false;r.stp=true;r.fault=false;r.orbit=0;r.active=0;r.frames=0;r.broadcasts=0;r.events=[];event(r,'control','恢復正常拓樸')}
    else return send(res,400,{error:'未知動作'});
    update(r);return send(res,200,view(r));
