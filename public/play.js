@@ -1,0 +1,6 @@
+let room=query('room').toUpperCase();text('room',room);let player=null;const saved=JSON.parse(sessionStorage.getItem('player-'+room)||'null');if(saved)ready(saved);
+async function join(){let name=document.getElementById('name').value.trim()||'同學';try{let d=await api('/api/join?room='+encodeURIComponent(room),{name});sessionStorage.setItem('player-'+room,JSON.stringify(d));ready(d)}catch(e){alert(e.message)}}
+document.getElementById('start').onclick=join;document.getElementById('name').onkeydown=e=>{if(e.key==='Enter')join()};
+function ready(d){player=d;document.getElementById('registration').hidden=true;document.getElementById('game').hidden=false;text('username',d.name)}
+document.getElementById('send').onclick=async()=>{if(!player)return;let button=document.getElementById('send');button.disabled=true;try{await api('/api/send?room='+encodeURIComponent(room),{id:player.id});text('result','✓ 廣播事件已送出！查看台上大螢幕。')}catch(e){text('result','⚠ '+e.message)}setTimeout(()=>button.disabled=false,1300)};
+watch(room,s=>{text('players',s.players);text('broadcasts',fmt(s.broadcasts));text('active',fmt(s.active));text('status',statusLabel(s.status));document.getElementById('status').className='statuspill '+statusClass(s.status);text('explain',!s.loop?'目前為正常拓樸。':s.stp?'有備援連線，但 STP 正在防止迴圈。':'Loop 存在且 STP 已停用，廣播可能持續循環！')});
